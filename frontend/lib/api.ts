@@ -17,6 +17,21 @@ export async function getProducts(): Promise<Product[]> {
   return response.json();
 }
 
+export async function getProductById(id: number): Promise<Product> {
+  const response = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch product details");
+  }
+
+  return response.json();
+}
+
 export async function createProduct(product: Omit<Product, "id">) {
   const response = await fetch(`${API_BASE_URL}/api/products`, {
     method: "POST",
