@@ -30,6 +30,8 @@ func main() {
 	router.GET("/api/products", handlers.GetProducts)
 	router.GET("/api/products/:id", handlers.GetProductByID)
 	router.POST("/api/products", handlers.CreateProduct)
+	router.PUT("/api/products/:id", handlers.UpdateProduct)
+	router.DELETE("/api/products/:id", handlers.DeleteProduct)
 
 	if err := router.Run(":8080"); err != nil {
 		log.Fatalf("server failed to start: %v", err)
