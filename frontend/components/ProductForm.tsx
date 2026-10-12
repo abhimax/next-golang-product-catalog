@@ -1,8 +1,8 @@
 "use client";
 
-import { createProduct } from "@/lib/api";
+import { createProduct, updateProduct } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type FormState = {
   name: string;
@@ -20,11 +20,28 @@ const initialState: FormState = {
   image_url: "",
 };
 
-export function ProductForm() {
+type ProductFormProps = {
+  mode?: "create" | "edit";
+  productId?: number;
+  initialValues?: Partial<FormState>;
+};
+
+export function ProductForm({
+  mode = "create",
+  productId,
+  initialValues,
+}: ProductFormProps) {
   const router = useRouter();
-  const [form, setForm] = useState<FormState>(initialState);
+  const [form, setForm] = useState<FormState>({
+    ...initialState,
+    ...initialValues,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setForm({ ...initialState, ...initialValues });
+  }, [initialValues]);
 
   const handleChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -39,13 +56,19 @@ export function ProductForm() {
     setError(null);
 
     try {
-      await createProduct({
+      const payload = {
         name: form.name,
         description: form.description,
         price: Number(form.price),
         stock: Number(form.stock),
         image_url: form.image_url,
-      });
+      };
+
+      if (mode === "edit" && productId) {
+        await updateProduct(productId, payload);
+      } else {
+        await createProduct(payload);
+      }
 
       router.push("/");
       router.refresh();
@@ -53,7 +76,7 @@ export function ProductForm() {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Something went wrong while creating the product.",
+          : "Something went wrong while saving the product.",
       );
     } finally {
       setIsSubmitting(false);
@@ -176,7 +199,13 @@ export function ProductForm() {
         disabled={isSubmitting}
         className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-400"
       >
-        {isSubmitting ? "Saving product..." : "Add product"}
+        {isSubmitting
+          ? mode === "edit"
+            ? "Updating product..."
+            : "Saving product..."
+          : mode === "edit"
+            ? "Save changes"
+            : "Add product"}
       </button>
     </form>
   );
