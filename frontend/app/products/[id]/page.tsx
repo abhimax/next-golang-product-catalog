@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { getProductById } from "@/lib/api";
+import { deleteProduct, getProductById } from "@/lib/api";
 import type { Product } from "@/types/product";
 
 const formatPrice = (price: number) =>
@@ -14,15 +14,20 @@ const formatPrice = (price: number) =>
 
 function ProductDetailContent() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const loadProduct = async () => {
       try {
         const data = await getProductById(Number(params.id));
         setProduct(data);
+        setQuantity(1);
       } catch (loadError) {
         setError(
           loadError instanceof Error
@@ -36,6 +41,59 @@ function ProductDetailContent() {
 
     void loadProduct();
   }, [params.id]);
+
+  const handleQuantityChange = (delta: number) => {
+    setQuantity((current) => {
+      const maxQuantity =
+        product?.stock && product.stock > 0 ? product.stock : 1;
+      return Math.min(Math.max(current + delta, 1), maxQuantity);
+    });
+  };
+
+  const handleBuyNow = () => {
+    if (!product) {
+      return;
+    }
+
+    if (product.stock <= 0) {
+      setPurchaseMessage("This item is out of stock right now.");
+      return;
+    }
+
+    setPurchaseMessage(
+      `Added ${quantity} ${product.name}${quantity > 1 ? "s" : ""} to your order.`,
+    );
+  };
+
+  const handleDelete = async () => {
+    if (!product) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete ${product.name}? This action cannot be undone.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      await deleteProduct(product.id);
+      router.push("/");
+      router.refresh();
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Unable to delete the product.",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -65,6 +123,8 @@ function ProductDetailContent() {
       </main>
     );
   }
+
+  const maxQuantity = product.stock > 0 ? product.stock : 1;
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
@@ -111,6 +171,62 @@ function ProductDetailContent() {
                 {product.description}
               </p>
 
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
+                  <button
+                    type="button"
+                    onClick={() => handleQuantityChange(-1)}
+                    disabled={product.stock <= 0 || quantity <= 1}
+                    className="h-10 w-10 rounded-full text-lg font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    −
+                  </button>
+                  <span className="min-w-12 text-center text-base font-semibold text-slate-900">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleQuantityChange(1)}
+                    disabled={product.stock <= 0 || quantity >= maxQuantity}
+                    className="h-10 w-10 rounded-full text-lg font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleBuyNow}
+                  disabled={product.stock <= 0}
+                  className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  Buy Now
+                </button>
+              </div>
+
+              {purchaseMessage ? (
+                <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                  {purchaseMessage}
+                </p>
+              ) : null}
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href={`/products/${product.id}/edit`}
+                  className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                >
+                  Edit product
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="inline-flex items-center justify-center rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+
               <div className="mt-8 grid gap-4 border-t border-slate-200 pt-6 sm:grid-cols-2">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -129,6 +245,17 @@ function ProductDetailContent() {
                     Workspace
                   </p>
                 </div>
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  More details
+                </p>
+                <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                  <li>• Free delivery on orders over $100</li>
+                  <li>• 30-day return window</li>
+                  <li>• Designed for modern, collaborative workspaces</li>
+                </ul>
               </div>
             </div>
           </div>
