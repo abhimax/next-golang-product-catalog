@@ -1,0 +1,16 @@
+name: Backend CI
+
+'on':
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-test:
+    name: Backend test placeholder
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log backend CI placeholder
+        run: echo "Backend CI is running. Automated backend tests will be added here."
