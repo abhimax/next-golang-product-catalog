@@ -19,6 +19,12 @@ func main() {
 		log.Fatalf("product seeding failed: %v", err)
 	}
 
+	if err := newRouter().Run(":8080"); err != nil {
+		log.Fatalf("server failed to start: %v", err)
+	}
+}
+
+func newRouter() *gin.Engine {
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"},
@@ -33,7 +39,5 @@ func main() {
 	router.PUT("/api/products/:id", handlers.UpdateProduct)
 	router.DELETE("/api/products/:id", handlers.DeleteProduct)
 
-	if err := router.Run(":8080"); err != nil {
-		log.Fatalf("server failed to start: %v", err)
-	}
+	return router
 }
