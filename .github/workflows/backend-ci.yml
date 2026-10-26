@@ -9,8 +9,16 @@ permissions:
 
 jobs:
   backend-test:
-    name: Backend test placeholder
+    name: checks on pull request
     runs-on: ubuntu-latest
     steps:
-      - name: Log backend CI placeholder
-        run: echo "Backend CI is running. Automated backend tests will be added here."
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+
+      - name: Run backend tests
+        run: go test ./...
